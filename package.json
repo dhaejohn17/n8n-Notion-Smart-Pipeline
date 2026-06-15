@@ -1,0 +1,25 @@
+{
+  "name": "n8n-notion-smart-pipeline",
+  "version": "0.1.0",
+  "description": "An AI-powered automation workflow that parses natural language transcripts into structured tasks and dynamically schedules them into Notion using n8n and Ollama.",
+  "main": "workflow.json",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dhaejohn17/n8n-notion-smart-pipeline.git"
+  },
+  "keywords": [
+    "n8n",
+    "notion",
+    "ollama",
+    "automation",
+    "llm",
+    "nlp",
+    "task-manager"
+    "telegram-bot"
+  ],
+  "author": "wisd / dhaejohn17",
+  "license": "MIT"
+}

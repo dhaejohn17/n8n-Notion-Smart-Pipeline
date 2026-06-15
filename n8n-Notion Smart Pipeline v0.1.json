@@ -1,0 +1,293 @@
+{
+  "name": "n8n-Notion Smart Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        0
+      ],
+      "id": "167d3143-c321-463c-94b2-e48f754f9300",
+      "name": "Telegram Trigger",
+      "webhookId": "10ba0a6d-bbcc-4a90-b80c-0300bd184873",
+      "credentials": {
+        "telegramApi": {
+          "id": "pVmjMh37B7pT1w3B",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice.file_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "1e5801d5-99c8-46d1-a934-767c9ff0a86b"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "82947893-0fb6-43b7-ac21-8df5f5d1f91b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        -96
+      ],
+      "id": "59ad0224-4abe-43fb-887a-4d407e27115a",
+      "name": "Get a file",
+      "webhookId": "53dd9d52-de24-4141-909e-d7710bc4bda6",
+      "credentials": {
+        "telegramApi": {
+          "id": "pVmjMh37B7pT1w3B",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Current Date: {{ $now.format('yyyy-MM-dd') }} ({{ $now.format('EEEE') }})\nCurrent Time: {{ $now.format('HH:mm') }}\n\nExtract data from this transcript into raw JSON only. Convert any mentioned time to 24-hour format (e.g., \"5 p.m.\" becomes \"17:00\"). Do not calculate the calendar date yourself.\n\nFormat:\n{\n  \"task_name\": \"string\",\n  \"context\": \"string\",\n  \"deadline_time\": \"HH:mm or null\",\n  \"deadline_day\": \"lowercase weekday name, 'tomorrow', 'today', or null\"\n}\n\nTranscript: \"{{ $json.text }}\"",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "AIMessagePromptTemplate",
+              "message": "="
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        592,
+        -64
+      ],
+      "id": "96d69a66-7fab-483e-af72-0608b03ab7b8",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5-coder:14b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmOllama",
+      "typeVersion": 1,
+      "position": [
+        592,
+        160
+      ],
+      "id": "13a35ca9-8ead-4608-8f99-1d33df564773",
+      "name": "Ollama Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "RLVIfPGAtrvDDy34",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9000/v1/audio/transcriptions",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-1"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        432,
+        160
+      ],
+      "id": "7b6fd9b3-b713-40a8-a047-995969cddf7d",
+      "name": "HTTP Request - FastWhisperer"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "<INPUT_YOUR-NOTION-DB-ID-HERE>",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://app.notion.com/p/<NOTION-DB-ID-HERE>"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Task name|title",
+              "title": "={{ \n  (() => {\n    const clean = $json.text.replace(/```json|```/g, '').trim();\n    return JSON.parse(clean).task_name;\n  })()\n}}"
+            },
+            {
+              "key": "Context/Details|rich_text",
+              "textContent": "={{ \n  (() => {\n    const clean = $json.text.replace(/```json|```/g, '').trim();\n    return JSON.parse(clean).context;\n  })()\n}}"
+            },
+            {
+              "key": "Deadline|date",
+              "date": "={{ \n  (() => {\n    try {\n      const clean = $json.text.replace(/```json|```/g, '').trim();\n      const parsed = JSON.parse(clean);\n      if (!parsed.deadline_day || parsed.deadline_day === \"null\") return undefined;\n\n      const time = parsed.deadline_time || \"00:00\";\n      const dayStr = parsed.deadline_day.toLowerCase();\n\n      let target = $now;\n      \n      if (dayStr === 'tomorrow') {\n        target = target.plus({ days: 1 });\n      } else if (dayStr !== 'today') {\n        // Map string to standard Luxon weekday numbers (1 = Mon, 7 = Sun)\n        const daysMap = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7 };\n        \n        // Strip out extra words like \"next\" to just get the day\n        const cleanDay = dayStr.replace(/next week's |next /g, \"\");\n        const targetDayNum = daysMap[cleanDay];\n        \n        if (targetDayNum) {\n          // Calculate days until the next occurrence of that weekday\n          let daysToAdd = targetDayNum - target.weekday;\n          if (daysToAdd <= 0) daysToAdd += 7; // Force it to the upcoming week if the day already passed\n          \n          target = target.plus({ days: daysToAdd });\n        }\n      }\n      \n      return `${target.toFormat('yyyy-MM-dd')}T${time}:00`;\n    } catch (e) {\n      return undefined;\n    }\n  })()\n}}",
+              "timezone": "Asia/Manila"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        -80
+      ],
+      "id": "04210303-3df0-4791-936d-8d6a3010b366",
+      "name": "Notion Node",
+      "credentials": {
+        "notionApi": {
+          "id": "DfeM5L2QK5cXbfUd",
+          "name": "Notion account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - FastWhisperer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Notion Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - FastWhisperer": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Manila",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "b6edbf4b-0ae3-43ff-8286-6bd3563cea99",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fab822f4e1a3da2e77f3ceb9290e379fdc40af6e5d082471425c5b58f2c4974c"
+  },
+  "nodeGroups": [],
+  "id": "yBVOjX1cEhDO8qlj",
+  "tags": []
+}
